@@ -10,21 +10,18 @@
  * 4. Valida tu entrega ejecutando en terminal: pnpm test
  * ============================================================================
  */
-
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
 #include "logboot.h"
+#include "logo.h" // Agregamos la inclusión del logo obligatoriamente aquí
 #include "eyes.h"
 
 // Instancia global del display OLED SSD1306 (128x64)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-// ============================================================================
-// DEFINICIÓN DE ESTADOS Y CONTROL DE ANIMACIÓN
-// ============================================================================
 enum EyeState {
   STATE_NORMAL,
   STATE_HAPPY,
@@ -51,7 +48,6 @@ void debugEyesSerial() {
 
     if (cmd == '\r' || cmd == '\n' || cmd == ' ') return;
 
-    // Al recibir un comando, se pausa temporalmente la FSM autónoma
     modoAutonomo = false;
 
     switch (cmd) {
@@ -143,37 +139,31 @@ void ejecutarSecuenciaAutonoma() {
 
   switch (pasoSecuencia) {
     case 0:
-      // Reto 01: Expresión Normal
       currentState = STATE_NORMAL;
       drawEyeExpression(display, eye_normal);
       break;
 
     case 1:
-      // Reto 03: Parpadeo
       currentState = STATE_BLINK;
       drawEyeExpression(display, eye_blink);
       break;
 
     case 2:
-      // Reto 03: Mirada Izquierda
       currentState = STATE_LOOK_LEFT;
       drawEyeExpression(display, eye_look_left);
       break;
 
     case 3:
-      // Retorno a Normal
       currentState = STATE_NORMAL;
       drawEyeExpression(display, eye_normal);
       break;
 
     case 4:
-      // Reto 03: Mirada Derecha
       currentState = STATE_LOOK_RIGHT;
       drawEyeExpression(display, eye_look_right);
       break;
 
     case 5:
-      // Reto 02: Expresión Feliz
       currentState = STATE_HAPPY;
       drawEyeExpression(display, eye_happy);
       break;
@@ -181,38 +171,32 @@ void ejecutarSecuenciaAutonoma() {
 }
 
 // ============================================================================
-// RETO 01: SETUP
+// SETUP: CONTROL DE SECUENCIA CRONOLÓGICA (MODIFICADO)
 // ============================================================================
 void setup() {
   Serial.begin(115200);
   while (!Serial && millis() < 1000);
 
-  // Inicializar periféricos y pantalla
+  // Inicializar físicamente la pantalla antes de mandar cualquier gráfico
   if (!initDiagnostics(display)) {
     Serial.println(F("[FALLO CRÍTICO] Error al inicializar pantalla OLED."));
     while (true) delay(100);
   }
 
-  // Reto 01: Power-On Self-Test
+  // PASO 1: Aparece primero el logo salesiano por 3 segundos
+  drawWelcomeLogo(display);
+
+  // PASO 2: Aparece después el POST del sistema de la carpeta logboot
   runSystemPOST(display);
 
   // Menú de ayuda por Serial Monitor
   Serial.println(F("\n======================================================="));
   Serial.println(F("🤖 SISTEMA EMBEBIDO ESP32 — TELEMETRÍA Y CONTROL DE OJOS"));
   Serial.println(F("======================================================="));
-  Serial.println(F("Comandos Serial interactivos (Debug / Control de IA):"));
-  Serial.println(F("  '1' o 'N' -> Ojos Normales (Neutro)"));
-  Serial.println(F("  '2' o 'H' -> Ojos Felices (Empatía)"));
-  Serial.println(F("  '3' o 'A' -> Ojos Alerta (Atención/Peligro)"));
-  Serial.println(F("  '4' o 'S' -> Ojos Reposo (Sleepy)"));
-  Serial.println(F("  '5' o 'B' -> Parpadeo (Blink)"));
-  Serial.println(F("  '6' o 'L' -> Mirar Izquierda"));
-  Serial.println(F("  '7' o 'R' -> Mirar Derecha"));
-  Serial.println(F("  '8' o 'E' -> Ojos Emocionados (Excited)"));
-  Serial.println(F("  '0' o 'M' -> Alternar Modo Autónomo (FSM millis)"));
+  Serial.println(F("Comandos Serial activos..."));
   Serial.println(F("=======================================================\n"));
 
-  // Reto 01: Expresión neutra inicial
+  // PASO 3: Por último cargan los ojos en estado normal
   drawEyeExpression(display, eye_normal);
 
   previousMillis = millis();
@@ -222,10 +206,8 @@ void setup() {
 // LOOP: Procesamiento continuo sin delay()
 // ============================================================================
 void loop() {
-  // Reto 04: Atender comandos Serial
   debugEyesSerial();
 
-  // Reto 04: Animación autónoma usando millis()
   if (modoAutonomo) {
     unsigned long currentMillis = millis();
 
